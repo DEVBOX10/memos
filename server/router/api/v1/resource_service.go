@@ -292,7 +292,7 @@ func (s *APIV1Service) convertResourceFromStore(ctx context.Context, resource *s
 			ID: resource.MemoID,
 		})
 		if memo != nil {
-			memoName := fmt.Sprintf("%s%d", MemoNamePrefix, memo.ID)
+			memoName := fmt.Sprintf("%s%s", MemoNamePrefix, memo.UID)
 			resourceMessage.Memo = &memoName
 		}
 	}

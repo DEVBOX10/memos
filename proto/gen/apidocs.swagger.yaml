@@ -828,8 +828,7 @@ paths:
         - name: memo.name
           description: |-
             The name of the memo.
-            Format: memos/{id}
-            id is the system generated id.
+            Format: memos/{memo}, memo is the user defined id or uuid.
           in: path
           required: true
           type: string
@@ -2006,8 +2005,7 @@ definitions:
         type: string
         description: |-
           The name of the memo.
-          Format: memos/{id}
-          id is the system generated id.
+          Format: memos/{memo}, memo is the user defined id or uuid.
         readOnly: true
       uid:
         type: string

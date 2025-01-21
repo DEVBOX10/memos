@@ -79,8 +79,7 @@ func (Visibility) EnumDescriptor() ([]byte, []int) {
 type Memo struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The name of the memo.
-	// Format: memos/{id}
-	// id is the system generated id.
+	// Format: memos/{memo}, memo is the user defined id or uuid.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// The user defined id of the memo.
 	Uid   string `protobuf:"bytes,2,opt,name=uid,proto3" json:"uid,omitempty"`

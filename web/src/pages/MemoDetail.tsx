@@ -12,7 +12,7 @@ import MobileHeader from "@/components/MobileHeader";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import useNavigateTo from "@/hooks/useNavigateTo";
 import useResponsiveWidth from "@/hooks/useResponsiveWidth";
-import { useMemoStore, useWorkspaceSettingStore } from "@/store/v1";
+import { memoNamePrefix, useMemoStore, useWorkspaceSettingStore } from "@/store/v1";
 import { MemoRelation_Type } from "@/types/proto/api/v1/memo_relation_service";
 import { Memo } from "@/types/proto/api/v1/memo_service";
 import { WorkspaceMemoRelatedSetting, WorkspaceSettingKey } from "@/types/proto/store/workspace_setting";
@@ -28,7 +28,8 @@ const MemoDetail = () => {
   const currentUser = useCurrentUser();
   const memoStore = useMemoStore();
   const uid = params.uid;
-  const memo = memoStore.getMemoByUid(uid || "");
+  const memoName = `${memoNamePrefix}${uid}`;
+  const memo = memoStore.getMemoByName(memoName);
   const workspaceMemoRelatedSetting = WorkspaceMemoRelatedSetting.fromPartial(
     workspaceSettingStore.getWorkspaceSettingByKey(WorkspaceSettingKey.MEMO_RELATED)?.memoRelatedSetting || {},
   );
@@ -41,15 +42,15 @@ const MemoDetail = () => {
 
   // Prepare memo.
   useEffect(() => {
-    if (uid) {
-      memoStore.fetchMemoByUid(uid).catch((error: ClientError) => {
+    if (memoName) {
+      memoStore.getOrFetchMemoByName(memoName).catch((error: ClientError) => {
         toast.error(error.details);
         navigateTo("/403");
       });
     } else {
       navigateTo("/404");
     }
-  }, [uid]);
+  }, [memoName]);
 
   // Prepare memo comments.
   useEffect(() => {

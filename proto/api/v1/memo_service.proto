@@ -130,8 +130,7 @@ enum Visibility {
 
 message Memo {
   // The name of the memo.
-  // Format: memos/{id}
-  // id is the system generated id.
+  // Format: memos/{memo}, memo is the user defined id or uuid.
   string name = 1 [(google.api.field_behavior) = OUTPUT_ONLY];
 
   // The user defined id of the memo.

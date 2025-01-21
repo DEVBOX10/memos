@@ -20,12 +20,12 @@ const EmbeddedMemo = ({ resourceId: uid, params: paramsStr }: Props) => {
   const context = useContext(RendererContext);
   const loadingState = useLoading();
   const memoStore = useMemoStore();
-  const memo = memoStore.getMemoByUid(uid);
-  const resourceName = `memos/${uid}`;
+  const memoName = `memos/${uid}`;
+  const memo = memoStore.getMemoByName(memoName);
 
   useEffect(() => {
-    memoStore.fetchMemoByUid(uid).finally(() => loadingState.setFinish());
-  }, [uid]);
+    memoStore.getOrFetchMemoByName(memoName).finally(() => loadingState.setFinish());
+  }, [memoName]);
 
   if (loadingState.isLoading) {
     return null;
@@ -37,12 +37,12 @@ const EmbeddedMemo = ({ resourceId: uid, params: paramsStr }: Props) => {
   const params = new URLSearchParams(paramsStr);
   const useSnippet = params.has("snippet");
   const inlineMode = params.has("inline");
-  if (!useSnippet && (memo.name === context.memoName || context.embeddedMemos.has(resourceName))) {
-    return <Error message={`Nested Rendering Error: ![[${resourceName}]]`} />;
+  if (!useSnippet && (memo.name === context.memoName || context.embeddedMemos.has(memoName))) {
+    return <Error message={`Nested Rendering Error: ![[${memoName}]]`} />;
   }
 
   // Add the memo to the set of embedded memos. This is used to prevent infinite loops when a memo embeds itself.
-  context.embeddedMemos.add(resourceName);
+  context.embeddedMemos.add(memoName);
   const contentNode = useSnippet ? (
     <div className={clsx("text-gray-800 dark:text-gray-400", inlineMode ? "" : "line-clamp-3")}>{memo.snippet}</div>
   ) : (

@@ -65,7 +65,7 @@ func (s *APIV1Service) CreateMemo(ctx context.Context, request *v1pb.CreateMemoR
 	}
 	if len(request.Resources) > 0 {
 		_, err := s.SetMemoResources(ctx, &v1pb.SetMemoResourcesRequest{
-			Name:      fmt.Sprintf("%s%d", MemoNamePrefix, memo.ID),
+			Name:      fmt.Sprintf("%s%s", MemoNamePrefix, memo.UID),
 			Resources: request.Resources,
 		})
 		if err != nil {
@@ -74,7 +74,7 @@ func (s *APIV1Service) CreateMemo(ctx context.Context, request *v1pb.CreateMemoR
 	}
 	if len(request.Relations) > 0 {
 		_, err := s.SetMemoRelations(ctx, &v1pb.SetMemoRelationsRequest{
-			Name:      fmt.Sprintf("%s%d", MemoNamePrefix, memo.ID),
+			Name:      fmt.Sprintf("%s%s", MemoNamePrefix, memo.UID),
 			Relations: request.Relations,
 		})
 		if err != nil {
@@ -155,7 +155,7 @@ func (s *APIV1Service) GetMemo(ctx context.Context, request *v1pb.GetMemoRequest
 		return nil, status.Errorf(codes.InvalidArgument, "invalid memo name: %v", err)
 	}
 	memo, err := s.Store.GetMemo(ctx, &store.FindMemo{
-		ID: &id,
+		UID: &id,
 	})
 	if err != nil {
 		return nil, err
@@ -223,7 +223,7 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 		return nil, status.Errorf(codes.InvalidArgument, "update mask is required")
 	}
 
-	memo, err := s.Store.GetMemo(ctx, &store.FindMemo{ID: &id})
+	memo, err := s.Store.GetMemo(ctx, &store.FindMemo{UID: &id})
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +241,7 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 	}
 
 	update := &store.UpdateMemo{
-		ID: id,
+		ID: memo.ID,
 	}
 	for _, path := range request.UpdateMask.Paths {
 		if path == "content" {
@@ -293,7 +293,7 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 			}
 		} else if path == "pinned" {
 			if _, err := s.Store.UpsertMemoOrganizer(ctx, &store.MemoOrganizer{
-				MemoID: id,
+				MemoID: memo.ID,
 				UserID: user.ID,
 				Pinned: request.Memo.Pinned,
 			}); err != nil {
@@ -327,7 +327,7 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 	}
 
 	memo, err = s.Store.GetMemo(ctx, &store.FindMemo{
-		ID: &id,
+		ID: &memo.ID,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get memo")
@@ -350,7 +350,7 @@ func (s *APIV1Service) DeleteMemo(ctx context.Context, request *v1pb.DeleteMemoR
 		return nil, status.Errorf(codes.InvalidArgument, "invalid memo name: %v", err)
 	}
 	memo, err := s.Store.GetMemo(ctx, &store.FindMemo{
-		ID: &id,
+		UID: &id,
 	})
 	if err != nil {
 		return nil, err
@@ -375,17 +375,17 @@ func (s *APIV1Service) DeleteMemo(ctx context.Context, request *v1pb.DeleteMemoR
 		}
 	}
 
-	if err = s.Store.DeleteMemo(ctx, &store.DeleteMemo{ID: id}); err != nil {
+	if err = s.Store.DeleteMemo(ctx, &store.DeleteMemo{ID: memo.ID}); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete memo")
 	}
 
 	// Delete memo relation
-	if err := s.Store.DeleteMemoRelation(ctx, &store.DeleteMemoRelation{MemoID: &id}); err != nil {
+	if err := s.Store.DeleteMemoRelation(ctx, &store.DeleteMemoRelation{MemoID: &memo.ID}); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete memo relations")
 	}
 
 	// Delete related resources.
-	resources, err := s.Store.ListResources(ctx, &store.FindResource{MemoID: &id})
+	resources, err := s.Store.ListResources(ctx, &store.FindResource{MemoID: &memo.ID})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list resources")
 	}
@@ -397,19 +397,19 @@ func (s *APIV1Service) DeleteMemo(ctx context.Context, request *v1pb.DeleteMemoR
 
 	// Delete memo comments
 	commentType := store.MemoRelationComment
-	relations, err := s.Store.ListMemoRelations(ctx, &store.FindMemoRelation{RelatedMemoID: &id, Type: &commentType})
+	relations, err := s.Store.ListMemoRelations(ctx, &store.FindMemoRelation{RelatedMemoID: &memo.ID, Type: &commentType})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list memo comments")
 	}
 	for _, relation := range relations {
-		if _, err := s.DeleteMemo(ctx, &v1pb.DeleteMemoRequest{Name: fmt.Sprintf("%s%d", MemoNamePrefix, relation.MemoID)}); err != nil {
+		if err := s.Store.DeleteMemo(ctx, &store.DeleteMemo{ID: relation.MemoID}); err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to delete memo comment")
 		}
 	}
 
 	// Delete memo references
 	referenceType := store.MemoRelationReference
-	if err := s.Store.DeleteMemoRelation(ctx, &store.DeleteMemoRelation{RelatedMemoID: &id, Type: &referenceType}); err != nil {
+	if err := s.Store.DeleteMemoRelation(ctx, &store.DeleteMemoRelation{RelatedMemoID: &memo.ID, Type: &referenceType}); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete memo references")
 	}
 
@@ -421,7 +421,7 @@ func (s *APIV1Service) CreateMemoComment(ctx context.Context, request *v1pb.Crea
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid memo name: %v", err)
 	}
-	relatedMemo, err := s.Store.GetMemo(ctx, &store.FindMemo{ID: &id})
+	relatedMemo, err := s.Store.GetMemo(ctx, &store.FindMemo{UID: &id})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get memo")
 	}
